@@ -1,6 +1,8 @@
 library(Matrix)
 library(igraph)
 library(mclust)
+library(reticulate)
+use_python("C:/Users/alexi/anaconda3/python.exe", required = TRUE)
 source("R/Codes_Spectral_Matrix_Paul_Chen_AOS_2020.r")
 source("R/comdet-dcmase.R")
 source("R/comdetmethods.R")
@@ -8,6 +10,11 @@ source("R/dcmase.R")
 source("R/SpectralMethods.R")
 source("R/run_graph_tool.R")
 source("R/make_ggplot.R")
+
+sys_path <- "C:/Users/alexi/Documents/MDCBM/Python"
+sys <- import("sys")
+sys$path <- c(sys$path, sys_path)
+OtrisymNMF <- import("package_OtrisymNMF.OtrisymNMF_CD_multilayer")
 
 
 run_simulations <- function(sim_setting, parameters, repetitions = 20) {
@@ -46,19 +53,45 @@ run_all_methods <- function(Adj_list, truecoms) {
   # Note: to run graph-tool, uncomment the following lines and comment the next
   # methods_to_run <- c("dcmase", "ave_spherical", "sq-bias-adjusted",
   #                    "mase-spherical","lmfo", "graph-tool")
-  methods_to_run <- c("dcmase", "ave_spherical", "sq-bias-adjusted",
-                      "mase-spherical","lmfo")
+  # methods_to_run <- c("dcmase", "ave_spherical", "sq-bias-adjusted",
+  #                     "mase-spherical","lmfo")
+  methods_to_run <- c("otrisymNMF","dcmase")
   results <- sapply(methods_to_run, function(method) {
     print(method)
+    if (method=="otrisymNMF"){
+      np <- import("numpy")
+      L <- length(Adj_list)
+      n <- nrow(Adj_list[[1]])
+      
+      X_r <- array(0, dim = c(L, n, n))
+      for (l in 1:L) {
+        M <- as.matrix(Adj_list[[l]])
+        M[!is.finite(M)] <- 0
+        X_r[l, , ] <- M
+      }
+      
+      X_np <- np$array(X_r)
+      truecoms_np <- np$array(truecoms)
+      
+      
+      res <- OtrisymNMF$OtrisymNMF_CD(X = X_np, r = K)
+      labels <- py_to_r(res[[2]])
+      labels <- labels + 1
+      classError(labels, truecoms)$errorRate
+    } 
+    
+    else{
+      classError(comdetmethods(Adj_list, K, method = method), truecoms)$errorRate
+      }
   
-    classError(comdetmethods(Adj_list, K, method = method), truecoms)$errorRate
+    
     }
     )
   # Note: to run graph-tool, uncomment the following lines and comment the next
   #names(results) <- c("DC-MASE", "Sum A", "S-A^2-Bias-adj",
   #                    "MASE", "OLMF", "graph-tool")
-  names(results) <-  c("DC-MASE", "Sum A", "S-A^2-Bias-adj",
-                          "MASE", "OLMF")
+
+  names(results) <-  c("OtrisymNMF","DC-MASE")
   return(results)
 }
 
