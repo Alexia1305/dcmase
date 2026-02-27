@@ -73,7 +73,7 @@ make_ggplot_multiple <- function(different_scenarios, parameter_name, xbreaks = 
 
 
 make_ggplot_multipleBT <- function(different_scenarios, parameter_name, xbreaks = c(1, 5, 10, 15, 20, 25),
-                                   methodnames = c("DC-MASE", "Sum A", "Sum A^2 bias adj.", "MASE", "OLMF", "graph-tool")) {
+                                   methodnames = c("FROST_MF","FROST_US","MF","US","DC-MASE", "Sum A", "Sum A^2 bias adj.", "MASE", "OLMF", "graph-tool")) {
   require(ggplot2)
   require(reshape2)
   require(scales)
@@ -104,7 +104,7 @@ make_ggplot_multipleBT <- function(different_scenarios, parameter_name, xbreaks 
 make_ggplot_multipleBT2 <- function(different_scenarios, 
                                     parameter_name, 
                                     xbreaks = c(1, 5, 10, 15, 20, 25),
-                                    methodnames = c("OtrisymNMF,DC-MASE", "Sum A", "Sum A^2 bias adj.", "MASE", "OLMF", "graph-tool","LMFO"),
+                                    methodnames = c("FROST_MF","FROST_US","MF","US","DC-MASE", "Sum A", "Sum A^2 bias adj.", "MASE", "OLMF", "graph-tool","LMFO"),
                                     ylim = c(0,0.6)) {
   # Packages nécessaires
   require(ggplot2)

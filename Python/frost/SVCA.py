@@ -1,9 +1,9 @@
+
 import numpy as np
 from scipy.sparse.linalg import svds
 from scipy.sparse import issparse
-from scipy.sparse import csr_matrix
 from scipy.sparse import csc_matrix
-from scipy.sparse import lil_matrix
+
 
 def update_orth_basis(V, v):
     """
@@ -31,7 +31,119 @@ def update_orth_basis(V, v):
     return V
 
 
-def SSPA(X, r, p, options=None):
+def svca(X, r, p, options=None):
+    """
+        Smoothed Vertex Component Analysis(SVCA)
+
+        Heuristic to solve the following problem:
+        Given a matrix X, find a matrix W such that X~=WH for some H>=0,
+        under the assumption that each column of W has p columns of X close
+        to it (called the p proximal latent points).
+
+        Parameters:
+            X (numpy.ndarray or csc_matrix): Input data matrix of size (m, n).
+            r (int): Number of columns of W.
+            p (int): Number of proximal latent points.
+            options (dict, optional):
+                - 'lra' (int):
+                    1 uses a low-rank approximation (LRA) of X in the selection step,
+                    0 (default) does not.
+                - 'average' (int):
+                    1 uses the mean for aggregation,
+                    0 (default) uses the median.
+
+        Returns:
+            W (numpy.ndarray): The matrix such that X ≈ WH.
+            K (numpy.ndarray): Indices of the selected data points (one column per iteration).
+
+            This code is based on the paper Smoothed Separable Nonnegative Matrix Factorization
+            by N. Nadisic, N. Gillis, and C. Kervazo
+            https://arxiv.org/abs/2110.05528
+        """
+    if options is None:
+        options = {}
+
+    X = X.astype('float')
+    if 'lra' not in options:
+        options['lra'] = 0
+    # LOw-rank approximation (LRA) of the input matrix
+    # Default: no low-rank approximations
+
+    # U contains the first r singular vectors of X
+    # Attention the rank of X must be greater than r
+    U, S, Vt = svds(X, k=r,random_state=42)
+
+    if options['lra'] == 1:
+        X = np.dot(S, Vt)  # Remplace X by its LRA
+
+    #  Use of the average or the median [default] to aggregate the extracted
+    # subsets of columns of X
+    if 'average' not in options:
+        options['average'] = 0
+
+    # Projector (I - VV^T)  onto the orthogonal complements of the columns of W
+    # extracted so far.
+    V = np.empty((X.shape[0], 0))
+
+    W = np.zeros((X.shape[0], r))
+    K = np.zeros((r, p), dtype=int)  # Indexes of the selected columns of X
+    # Iterations of SVCA
+    for k in range(r):
+        # random direction in the columns of U subspace
+        diru = np.dot(U, np.random.randn(r))
+
+        # Projection of the random direction to be orthogonal with the previously computed columns of W.
+        if k >= 1:
+            diru = diru - np.dot(V, np.dot(V.T, diru))
+
+        u = diru.T @ X
+
+        # Sorting the entries
+        b = np.argsort(u)
+
+        # if abs(u(b(1))) < abs(u(b(end)))
+        if np.abs(np.median(u[b[:p]])) < np.abs(np.median(u[b[-p:]])):
+            b = b[::-1]  # Inverse
+
+        # Select the indices corresponding to the largest or lowest entries of u
+        K[k, :] = b[:p]
+
+        # Compute vertex
+        if p == 1:
+            if issparse(X):
+                W[:, k] = X[:, K[k, :]].toarray().ravel()
+            else:
+                W[:, k] = X[:, K[k, :]]
+
+        else:
+            if options['average'] == 1:
+                if issparse(X):
+                    subX = X[:, K[k, :]]
+                    row_sums = subX.sum(axis=1).A1
+                    num_cols = subX.shape[1]
+                    row_means = row_sums / num_cols
+
+                    W[:, k] = row_means
+                else:
+                    W[:, k] = np.mean(X[:, K[k, :]], axis=1)
+
+
+            else:
+                if issparse(X):
+                    W[:, k] = np.median(X[:, K[k, :]].toarray(), axis=1)
+                else:
+                    W[:, k] = np.median(X[:, K[k, :]], axis=1)
+
+        # Update the projector
+        V = update_orth_basis(V, W[:, k])
+
+    if options['lra'] == 1:
+        W = np.dot(U, W)  # Put back the endmembers in the original space
+
+    return W, K
+
+
+def sspa(X, r, p, options=None):
     """
     Smoothed Successive Projection Algorithm (SSPA)
 
@@ -93,13 +205,12 @@ def SSPA(X, r, p, options=None):
         else:
             diru = X[:, spb]
 
-
         # Ensure orthogonality to previously extracted columns
         if k >= 1:
             diru -= np.dot(V, np.dot(V.T, diru))
 
         # Compute inner product with data matrix
-        u = diru.T@ X
+        u = diru.T @ X
 
         # Sort values and select indices corresponding to largest values
         sorted_indices = np.argsort(-u)  # Descending order
@@ -137,115 +248,5 @@ def SSPA(X, r, p, options=None):
     # If low-rank approximation was used, project W back
     if lra == 1:
         W = np.dot(U, W)
-
-    return W, K
-
-def SVCA(X, r, p, options=None):
-    """
-        Smoothed Vertex Component Analysis(SVCA)
-
-        Heuristic to solve the following problem:
-        Given a matrix X, find a matrix W such that X~=WH for some H>=0,
-        under the assumption that each column of W has p columns of X close
-        to it (called the p proximal latent points).
-
-        Parameters:
-            X (numpy.ndarray or csc_matrix): Input data matrix of size (m, n).
-            r (int): Number of columns of W.
-            p (int): Number of proximal latent points.
-            options (dict, optional):
-                - 'lra' (int):
-                    1 uses a low-rank approximation (LRA) of X in the selection step,
-                    0 (default) does not.
-                - 'average' (int):
-                    1 uses the mean for aggregation,
-                    0 (default) uses the median.
-
-        Returns:
-            W (numpy.ndarray): The matrix such that X ≈ WH.
-            K (numpy.ndarray): Indices of the selected data points (one column per iteration).
-
-            This code is based on the paper Smoothed Separable Nonnegative Matrix Factorization
-            by N. Nadisic, N. Gillis, and C. Kervazo
-            https://arxiv.org/abs/2110.05528
-        """
-    if options is None:
-        options = {}
-
-        # Approximation de faible rang (LRA) de la matrice d'entrée
-        # Par défaut, il n'y a pas d'approximation de faible rang
-        # Set default options if not provided
-    X = X.astype('float')
-    if 'lra' not in options:
-        options['lra'] = 0
-
-        # Calcul des vecteurs singuliers
-    U, S, Vt = svds(X, k=r)  # U contient les premiers r vecteurs singuliers de X
-
-    if options['lra'] == 1:
-        X = np.dot(S, Vt)  # Remplace X par son approximation de faible rang
-
-    # Agrégation par moyenne ou médiane (par défaut : médiane)
-    if 'average' not in options:
-        options['average'] = 0  # Médiane par défaut
-
-    # Projection (I - VV^T) sur le complément orthogonal des colonnes de W
-    V = np.empty((X.shape[0], 0))  # Matrice vide pour commencer les itérations de SVCA
-
-    W = np.zeros((X.shape[0], r))  # Matrice W de la taille m * r
-    K = np.zeros((r, p), dtype=int)  # Indices des points de données sélectionnés
-
-    for k in range(r):
-        # Direction aléatoire dans la colonne de U
-        diru = np.dot(U, np.random.randn(r))
-
-        # Projection de la direction aléatoire pour être orthogonale aux colonnes extraites de W
-        if k >= 1:
-            diru = diru - np.dot(V, np.dot(V.T, diru))
-
-        # Produit scalaire avec la matrice de données
-        u = diru.T @ X
-
-        # Trier les entrées et sélectionner la direction maximisant |u|
-        b = np.argsort(u)
-
-        # Vérifier la condition de médiane
-        if np.abs(np.median(u[b[:p]])) < np.abs(np.median(u[b[-p:]])):
-            b = b[::-1]  # Inverser si nécessaire
-
-        # Sélectionner les indices correspondant aux plus grandes valeurs de u
-        K[k, :] = b[:p]
-
-        # Calcul de la "vertex"
-        if p == 1:
-            if issparse(X):
-                W[:, k] = X[:, K[k, :]].toarray().ravel()
-            else:
-                W[:, k] = X[:, K[k, :]]
-
-        else:
-            if options['average'] == 1:
-                if issparse(X):
-                    subX = X[:, K[k, :]]
-                    row_sums = subX.sum(axis=1).A1  # vecteur numpy 1D
-                    num_cols = subX.shape[1]
-                    row_means = row_sums / num_cols
-
-                    W[:, k] = row_means
-                else:
-                    W[:, k] = np.mean(X[:, K[k, :]], axis=1)
-
-
-            else:
-                if issparse(X):
-                    W[:, k] = np.median(X[:, K[k, :]].toarray(), axis=1)
-                else:
-                    W[:, k] = np.median(X[:, K[k, :]], axis=1)
-
-        # Mise à jour du projecteur
-        V = update_orth_basis(V, W[:, k])
-
-    if options['lra'] == 1:
-        W = np.dot(U, W)  # Si l'approximation de faible rang est activée, on multiplie par U
 
     return W, K

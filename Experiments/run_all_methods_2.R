@@ -14,7 +14,8 @@ source("R/make_ggplot.R")
 sys_path <- "C:/Users/alexi/Documents/MDCBM/Python"
 sys <- import("sys")
 sys$path <- c(sys$path, sys_path)
-OtrisymNMF <- import("package_OtrisymNMF.OtrisymNMF_CD_multilayer")
+frost <- import("frost.frost_multilayer")
+np <- import("numpy")
 
 
 run_simulations <- function(sim_setting, parameters, repetitions = 20) {
@@ -51,26 +52,39 @@ run_all_methods <- function(Adj_list, truecoms) {
   #                    "mase-spherical","lmfo", "graph-tool")
   # methods_to_run <- c("dcmase", "ave_spherical", "sq-bias-adjusted",
   #                     "mase-spherical","lmfo")
-  methods_to_run <- c("otrisymNMF","lmfo")
+  methods_to_run <- c("frost-mf","frost-us","us","mf","lmfo","dcmase")
   results <- sapply(methods_to_run, function(method) {
     print(method)
-    if (method=="otrisymNMF"){
-      np <- import("numpy")
-      L <- length(Adj_list)
-      n <- nrow(Adj_list[[1]])
+    if (method=="frost-mf"){
       
-      X_r <- array(0, dim = c(L, n, n))
-      for (l in 1:L) {
-        M <- as.matrix(Adj_list[[l]])
-        M[!is.finite(M)] <- 0
-        X_r[l, , ] <- M
-      }
       
-      X_np <- np$array(X_r)
+      seed_for_python <- sample.int(.Machine$integer.max, 1)
+      
+      Adj_list_numpy <- lapply(Adj_list, function(X) np$array(as.matrix(X)))
+      X_list <- r_to_py(Adj_list_numpy)
       truecoms_np <- np$array(truecoms)
       
       
-      res <- OtrisymNMF$OtrisymNMF_CD(X = X_np, r = K)
+      res <- frost$frost_multilayer(X_list, K, init_method='MF-SC-CA',init_seed=seed_for_python)
+      labels <- py_to_r(res[[2]])
+      labels <- labels + 1
+      
+      # Sauvegarder X et truecoms dans un fichier .npz
+      #np$savez("data_for_python.npz", X = X_np, truecoms = truecoms_np,moments=labels)
+      
+      
+      classError(labels, truecoms)$errorRate
+      
+    }
+    else if (method=="frost-us"){
+      seed_for_python <- sample.int(.Machine$integer.max, 1)
+      
+      Adj_list_numpy <- lapply(Adj_list, function(X) np$array(as.matrix(X)))
+      X_list <- r_to_py(Adj_list_numpy)
+      truecoms_np <- np$array(truecoms)
+      
+      
+      res <- frost$frost_multilayer(X_list, K, init_method='USENC',init_seed=seed_for_python)
       labels <- py_to_r(res[[2]])
       labels <- labels + 1
       
@@ -81,8 +95,49 @@ run_all_methods <- function(Adj_list, truecoms) {
       classError(labels, truecoms)$errorRate
       
     } 
-  
-    
+    else if (method=="mf"){
+     
+      
+      seed_for_python <- sample.int(.Machine$integer.max, 1)
+      
+      Adj_list_numpy <- lapply(Adj_list, function(X) np$array(as.matrix(X)))
+      X_list <- r_to_py(Adj_list_numpy)
+      truecoms_np <- np$array(truecoms)
+      
+      
+      res <- frost$frost_multilayer(X_list, K, maxiter=as.integer(0), init_method='MF-SC-CA',init_seed=seed_for_python)
+      labels <- py_to_r(res[[2]])
+      labels <- labels + 1
+      
+      # Sauvegarder X et truecoms dans un fichier .npz
+      #np$savez("data_for_python.npz", X = X_np, truecoms = truecoms_np,moments=labels)
+      
+      
+      classError(labels, truecoms)$errorRate
+      
+      
+    } 
+    else if (method=="us"){
+      
+      
+      seed_for_python <- sample.int(.Machine$integer.max, 1)
+      
+      Adj_list_numpy <- lapply(Adj_list, function(X) np$array(as.matrix(X)))
+      X_list <- r_to_py(Adj_list_numpy)
+      truecoms_np <- np$array(truecoms)
+      
+      
+      res <- frost$frost_multilayer(X_list, K, maxiter=as.integer(0),init_method='USENC',init_seed=seed_for_python)
+      labels <- py_to_r(res[[2]])
+      labels <- labels + 1
+      
+      # Sauvegarder X et truecoms dans un fichier .npz
+      #np$savez("data_for_python.npz", X = X_np, truecoms = truecoms_np,moments=labels)
+      
+      
+      classError(labels, truecoms)$errorRate
+      
+    } 
     else{
      
       classError(comdetmethods(Adj_list, K, method = method), truecoms)$errorRate
@@ -96,7 +151,7 @@ run_all_methods <- function(Adj_list, truecoms) {
   #names(results) <- c("DC-MASE", "Sum A", "S-A^2-Bias-adj",
   #                    "MASE", "OLMF", "graph-tool")
   
-  names(results) <-  c("OtrisymNMF","LMFO")
+  names(results) <-  c("FROST_MF","FROST_US","US","MF","LMFO","DC_MASE")
   return(results)
 }
 

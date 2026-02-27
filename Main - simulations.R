@@ -16,8 +16,8 @@ source("Experiments/run_all_methods.R")
 
 # num_replications <- 100
 # num_layers <- list( 5, 10, 15, 20, 25,30,35, 40, 45, 50)
-num_replications <- 2
-num_layers <- list( 5)
+num_replications <- 4
+num_layers <- list(50)
 
 parameters_list <- num_layers
 param_iter = parameters_list
@@ -26,25 +26,47 @@ param_iter = parameters_list
 #######################################
 # Run different scenarios
 #######################################
-# Same B same theta
-results_simulation1 <- iterate_parameters(sim_setting = simulation1, parameters_list, param_iter, num_replications)
+
+# # Same B same theta
+# results_simulation1 <- iterate_parameters(sim_setting = simulation1, parameters_list, param_iter, num_replications)
+# 
+# 
+# # Different B same theta
+# results_simulation2 <- iterate_parameters(sim_setting = simulation2, parameters_list, param_iter, num_replications)
+# 
+# # Diff B diff theta
+# results_simulation3 <- iterate_parameters(simulation3, parameters_list, param_iter, num_replications)
+# # Same B different theta
+# results_simulation4 <- iterate_parameters(simulation4, parameters_list, param_iter, num_replications)
+
+# Core-periphery B same theta
+results_simulation8 <- iterate_parameters(sim_setting = simulation8, parameters_list, param_iter, num_replications)
+
+
+# Core)periphery B different theta
+results_simulation9 <- iterate_parameters(sim_setting = simulation9, parameters_list, param_iter, num_replications)
+# 
+# 
+# 
+# parameters_list <- lapply(param_iter, 
+#                           function(x) c(x, 150, 3))
+# # Same B alternating theta
+# results_simulation6 <- iterate_parameters(simulation6, parameters_list, param_iter, num_replications)
+# # Different B alternating theta
+# results_simulation7 <- iterate_parameters(simulation7, parameters_list, param_iter, num_replications)
 
 browser()
-# Different B same theta
-results_simulation2 <- iterate_parameters(sim_setting = simulation2, parameters_list, param_iter, num_replications)
 
-# Diff B diff theta
-results_simulation3 <- iterate_parameters(simulation3, parameters_list, param_iter, num_replications)
-# Same B different theta
-results_simulation4 <- iterate_parameters(simulation4, parameters_list, param_iter, num_replications)
+different_scenarios <- rbind(results_simulation8, results_simulation9)
 
-
-parameters_list <- lapply(param_iter, 
-                          function(x) c(x, 150, 3))
-# Same B alternating theta
-results_simulation6 <- iterate_parameters(simulation6, parameters_list, param_iter, num_replications)
-# Different B alternating theta
-results_simulation7 <- iterate_parameters(simulation7, parameters_list, param_iter, num_replications)
+write.table(
+  different_scenarios,
+  file = "test_core.txt",
+  sep = "\t",
+  row.names = FALSE,
+  col.names = FALSE,
+  quote = FALSE
+)
 
 
 #######################################
@@ -71,7 +93,7 @@ different_scenarios$scenarioB <- factor(different_scenarios$scenarioB,
                                        levels = c("Same B", "Different B"))
 different_scenarios$scenarioT <- factor(different_scenarios$scenarioT,
                                         levels = c("Same \u0398", "Different \u0398", "Alternating \u0398"))
-save(different_scenarios, file = "Results-Otrisym-rep100-miscerror.RData")
+save(different_scenarios, file = "Results-test2-rep100-miscerror.RData")
 
 source("R/make_ggplot.R")
 #######################################
@@ -79,8 +101,16 @@ source("R/make_ggplot.R")
 #######################################
 #load("Experiments/Results-allmethods-rep100-miscerror.RData")
 #png("Simulation-rep100-6scenarios-flipped.png", width = 1200, height = 1500, res = 200)
-make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(5, seq(10, 50, 10)),
-                       methodnames = c("OtrisymNMF", "DC-MASE"))#, "graph-tool"))
+different_scenarios[] <- lapply(different_scenarios, function(col) {
+  if (is.list(col)) {
+    as.numeric(unlist(col))
+  } else {
+    col
+  }
+})
+
+make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),
+                       methodnames = c("FROST_MF","FROST_US","US","LMFO","DC_MASE"))#, "graph-tool"))
 #make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),
                         #methodnames = c("DC-MASE", "Sum of adj. matrices", "Bias-adjusted SoS",  "MASE", "OLMF"))#, "graph-tool"))
 
