@@ -5,10 +5,10 @@
 
 # Load all methods for simulations
 source("Experiments/run_all_methods.R")
-
+library(dplyr)
 # Note: the  code excludes the method graph-tool by default.
 # To run graph-tool, install the Python package and uncomment
-# the corresponding lines in "R/run_all_methods_2.R"
+# the corresponding lines in "R/run_all_methods.R"
 
 #######################################
 # Simulation settings
@@ -16,8 +16,8 @@ source("Experiments/run_all_methods.R")
 
 # num_replications <- 100
 # num_layers <- list( 5, 10, 15, 20, 25,30,35, 40, 45, 50)
-num_replications <- 4
-num_layers <- list(50)
+num_replications <- 1
+num_layers <- list(1,2,3,5,7,10,15,20,30,40,50)
 
 parameters_list <- num_layers
 param_iter = parameters_list
@@ -27,44 +27,159 @@ param_iter = parameters_list
 # Run different scenarios
 #######################################
 
-# # Same B same theta
-# results_simulation1 <- iterate_parameters(sim_setting = simulation1, parameters_list, param_iter, num_replications)
-# 
-# 
-# # Different B same theta
-# results_simulation2 <- iterate_parameters(sim_setting = simulation2, parameters_list, param_iter, num_replications)
-# 
-# # Diff B diff theta
-# results_simulation3 <- iterate_parameters(simulation3, parameters_list, param_iter, num_replications)
-# # Same B different theta
-# results_simulation4 <- iterate_parameters(simulation4, parameters_list, param_iter, num_replications)
+# Same B same theta
+results_simulation1 <- iterate_parameters(sim_setting = simulation1, parameters_list, param_iter, num_replications)
 
-# Core-periphery B same theta
-results_simulation8 <- iterate_parameters(sim_setting = simulation8, parameters_list, param_iter, num_replications)
-
-
-# Core)periphery B different theta
-results_simulation9 <- iterate_parameters(sim_setting = simulation9, parameters_list, param_iter, num_replications)
-# 
-# 
-# 
-# parameters_list <- lapply(param_iter, 
-#                           function(x) c(x, 150, 3))
-# # Same B alternating theta
-# results_simulation6 <- iterate_parameters(simulation6, parameters_list, param_iter, num_replications)
-# # Different B alternating theta
-# results_simulation7 <- iterate_parameters(simulation7, parameters_list, param_iter, num_replications)
-
-browser()
-
-different_scenarios <- rbind(results_simulation8, results_simulation9)
-
+resume <- results_simulation1 %>%
+  group_by(parameter) %>%
+  summarise(
+    across(
+      .cols = c(FROST_MF, FROST_US,FROST_DCMASE, US, MF, OLMF, DC_MASE,graph.tool,Sum.A,S.A.2.Bias.adj,MASE),
+      .fns = list(
+        moyenne = ~ mean(.x, na.rm = TRUE),
+        ecart_type = ~ sd(.x, na.rm = TRUE)
+      ),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  )
+resume[-1] <- lapply(resume[-1], round, digits = 4)
 write.table(
-  different_scenarios,
-  file = "test_core.txt",
+  resume,
+  file = "simulation1.txt",
   sep = "\t",
   row.names = FALSE,
-  col.names = FALSE,
+  quote = FALSE
+)
+
+
+# Different B same theta
+results_simulation2 <- iterate_parameters(sim_setting = simulation2, parameters_list, param_iter, num_replications)
+resume <- results_simulation2 %>%
+  group_by(parameter) %>%
+  summarise(
+    across(
+      .cols = c(FROST_MF, FROST_US,FROST_DCMASE, US, MF, OLMF, DC_MASE,graph.tool,Sum.A,S.A.2.Bias.adj,MASE),
+      .fns = list(
+        moyenne = ~ mean(.x, na.rm = TRUE),
+        ecart_type = ~ sd(.x, na.rm = TRUE)
+      ),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  )
+resume[-1] <- lapply(resume[-1], round, digits = 4)
+write.table(
+  resume,
+  file = "simulation2.txt",
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE
+)
+
+
+# Diff B diff theta
+results_simulation3 <- iterate_parameters(simulation3, parameters_list, param_iter, num_replications)
+resume <- results_simulation3 %>%
+  group_by(parameter) %>%
+  summarise(
+    across(
+      .cols = c(FROST_MF, FROST_US,FROST_DCMASE, US, MF, OLMF, DC_MASE,graph.tool,Sum.A,S.A.2.Bias.adj,MASE),
+      .fns = list(
+        moyenne = ~ mean(.x, na.rm = TRUE),
+        ecart_type = ~ sd(.x, na.rm = TRUE)
+      ),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  )
+resume[-1] <- lapply(resume[-1], round, digits = 4)
+write.table(
+  resume,
+  file = "simulation3.txt",
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE
+)
+# Same B different theta
+results_simulation4 <- iterate_parameters(simulation4, parameters_list, param_iter, num_replications)
+resume <- results_simulation4 %>%
+  group_by(parameter) %>%
+  summarise(
+    across(
+      .cols = c(FROST_MF, FROST_US,FROST_DCMASE, US, MF, OLMF, DC_MASE,graph.tool,Sum.A,S.A.2.Bias.adj,MASE),
+      .fns = list(
+        moyenne = ~ mean(.x, na.rm = TRUE),
+        ecart_type = ~ sd(.x, na.rm = TRUE)
+      ),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  )
+resume[-1] <- lapply(resume[-1], round, digits = 4)
+write.table(
+  resume,
+  file = "simulation4.txt",
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE
+)
+# # Core-periphery B same theta
+# results_simulation8 <- iterate_parameters(sim_setting = simulation8, parameters_list, param_iter, num_replications)
+# 
+# 
+# # Core)periphery B different theta
+# results_simulation9 <- iterate_parameters(sim_setting = simulation9, parameters_list, param_iter, num_replications)
+# # 
+
+
+parameters_list <- lapply(param_iter,
+                          function(x) c(x, 150, 3))
+# Same B alternating theta
+results_simulation6 <- iterate_parameters(simulation6, parameters_list, param_iter, num_replications)
+resume <- results_simulation6 %>%
+  group_by(parameter) %>%
+  summarise(
+    across(
+      .cols = c(FROST_MF, FROST_US,FROST_DCMASE, US, MF, OLMF, DC_MASE,graph.tool,Sum.A,S.A.2.Bias.adj,MASE),
+      .fns = list(
+        moyenne = ~ mean(.x, na.rm = TRUE),
+        ecart_type = ~ sd(.x, na.rm = TRUE)
+      ),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  )
+resume[-1] <- lapply(resume[-1], round, digits = 4)
+write.table(
+  resume,
+  file = "simulation6.txt",
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE
+)
+
+# Different B alternating theta
+results_simulation7 <- iterate_parameters(simulation7, parameters_list, param_iter, num_replications)
+resume <- results_simulation7 %>%
+  group_by(parameter) %>%
+  summarise(
+    across(
+      .cols = c(FROST_MF, FROST_US,FROST_DCMASE, US, MF, OLMF, DC_MASE,graph.tool,Sum.A,S.A.2.Bias.adj,MASE),
+      .fns = list(
+        moyenne = ~ mean(.x, na.rm = TRUE),
+        ecart_type = ~ sd(.x, na.rm = TRUE)
+      ),
+      .names = "{.col}_{.fn}"
+    ),
+    .groups = "drop"
+  )
+resume[-1] <- lapply(resume[-1], round, digits = 4)
+write.table(
+  resume,
+  file = "simulation7.txt",
+  sep = "\t",
+  row.names = FALSE,
   quote = FALSE
 )
 
@@ -93,7 +208,7 @@ different_scenarios$scenarioB <- factor(different_scenarios$scenarioB,
                                        levels = c("Same B", "Different B"))
 different_scenarios$scenarioT <- factor(different_scenarios$scenarioT,
                                         levels = c("Same \u0398", "Different \u0398", "Alternating \u0398"))
-save(different_scenarios, file = "Results-test2-rep100-miscerror.RData")
+save(different_scenarios, file = "Results-testcomplete.RData")
 
 source("R/make_ggplot.R")
 #######################################
@@ -110,7 +225,7 @@ different_scenarios[] <- lapply(different_scenarios, function(col) {
 })
 
 make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),
-                       methodnames = c("FROST_MF","FROST_US","US","LMFO","DC_MASE"))#, "graph-tool"))
+                       methodnames = c("FROST_MF","FROST_US","FROST_DCMASE","US","OLMF","DC_MASE","graph-tool","Sum of adj. matrices", "Bias-adjusted SoS",  "MASE"))#, "graph-tool"))
 #make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),
                         #methodnames = c("DC-MASE", "Sum of adj. matrices", "Bias-adjusted SoS",  "MASE", "OLMF"))#, "graph-tool"))
 

@@ -8,7 +8,7 @@
 simulation1s <- function(parameters, seed = 1989) {
   set.seed(seed)
   ave_deg <- parameters[1]
-  m <- 20
+  m <- 10
   
   # Generate network parameters ------------------------------------------------
   n <- 150
@@ -36,7 +36,7 @@ simulation1s <- function(parameters, seed = 1989) {
 simulation2s <- function(parameters, seed = 1989) {
   set.seed(seed)
   ave_deg <- parameters[1]
-  m <- 20
+  m <- 10
   
   # Generate network parameters ------------------------------------------------
   n <- 150
@@ -71,7 +71,7 @@ simulation2s <- function(parameters, seed = 1989) {
 simulation3s <- function(parameters, seed = 1989) {
   set.seed(seed)
   ave_deg <- parameters[1]
-  m <- 20
+  m <- 10
   # Generate network parameters ------------------------------------------------
   n <- 150
   K <- 3
@@ -102,7 +102,7 @@ simulation3s <- function(parameters, seed = 1989) {
 simulation4s <- function(parameters, seed = 1989) {
   set.seed(seed)
   ave_deg <- parameters[1]
-  m <- 20
+  m <- 10
   # Generate network parameters ------------------------------------------------
   n <- 150
   K <- 3
@@ -141,7 +141,7 @@ simulation6s <- function(parameters, seed = 1989) {
   n <- parameters[2] #150
   K <- parameters[3] #3
   
-  m <- 20
+  m <- 10
   Z <- kronecker(diag(K), rep(1, n/K))
   
   theta1 <- rep(c(rep(0.15, 0.5*n/K), rep(0.8, 0.5*n/K)), K)
@@ -187,7 +187,7 @@ simulation7s <- function(parameters, seed = 1989) {
   n <- parameters[2] #150
   K <- parameters[3] #3
   
-  m <- 20
+  m <- 10
   Z <- kronecker(diag(K), rep(1, n/K))
   
   theta1 <- rep(c(rep(0.15, 0.5*n/K), rep(0.8, 0.5*n/K)), K)

@@ -25,18 +25,31 @@ adjacencies_to_graphml <- function(Adj_list, filename) {
 
 
 run_graph_tool <- function(Adj_list, K, id = NULL) {
-  if(is.null(id)) {
-    id = round(runif(1)*10000000)
+
+  if (is.null(id)) {
+    id <- round(runif(1) * 10000000)
   }
+
   require(reticulate)
-  # use_python("/usr/local/bin/python3") # did not work
-  graph_file <-  paste("temp/multilayer", id, ".graphml", sep="")
-  result_file <- paste("temp/result", id,".csv", sep = "")
+
+  graph_file  <- paste0("temp/multilayer", id, ".graphml")
+  result_file <- paste0("temp/result", id, ".csv")
+
   adjacencies_to_graphml(Adj_list, graph_file)
-  command_gt <- paste("/usr/local/bin/python3 Python/graphtool-script.py", K, id)
-  system(command_gt)
-  result = read.csv(result_file)
+
+  command_gt <- paste(
+    "/home/pistou/miniconda3/envs/mdcbm/bin/python",
+    "Python/graphtool-script.py",
+    K,
+    id
+  )
+
+  status <- system(command_gt)
+
+  result <- read.csv(result_file)
+
   system(paste("rm", graph_file))
   system(paste("rm", result_file))
+
   as.numeric(factor(result$X0))
 }

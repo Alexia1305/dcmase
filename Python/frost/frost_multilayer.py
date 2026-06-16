@@ -21,8 +21,8 @@ from scipy.sparse import diags
 # ---------------- frost ----------------
 # -----------------------------------------------
 
-def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limit=300, init_method='MF-SC-CA', init_w=None,
-                     power_method=False, verbosity=0,
+def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limit=50, init_method='MF-SC-CA', init_w=None,
+                     power_method=False, init_partition=None, verbosity=1,
                      init_seed=None, true_labels=None):
     """
     Heuristic algorithm for multilayer community detection via joint nonnegative matrix trifactorization.
@@ -108,51 +108,65 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limi
     n = X_list[0].shape[0]
     error_best = float('inf')
 
+
     w_best = np.zeros((L, n))
     S_best = np.zeros((L, r, r))
     v_best = np.zeros(n)
 
     # Precomputations
     normX = [norm(X, 'fro') for X in X_list]
+    degrees_layers = []
+
+    for X in X_list:
+        degrees = np.asarray(X.sum(axis=1)).ravel()
+        degrees_layers.append(degrees)
 
     if verbosity > 0:
         print(f'Running {numTrials} Trials in Series')
 
     for trial in range(numTrials):
-        if L == 1 :
-            init_method = 'onelayer'
-
-        if init_seed is not None:
-            init_seed += 10 * trial
-            np.random.seed(init_seed)
-
-        if init_method == 'random':
-            base = np.arange(r)
-            rest = np.random.randint(0, r, size=n - r)
-            v = np.concatenate([base, rest])
-            np.random.shuffle(v)
+        if init_partition is not None:
+            v=init_partition.copy()
             w = np.zeros((L, n))
             for l in range(L):
                 w[l] = initialize_w_values(X_list[l], v)
-            # for l in range(L):
-            #     w[l], v = PowMethOTRISYMNMFFixed(X_list[l], r, labels_final, w[l], maxiter=50, timelimit=200)
-
-        elif init_method == 'onelayer':
-            w = np.zeros((L, n))
-            lr = np.random.randint(0, L)  # Choose a random layer
-            w[lr], v, _ = initialize_W_onelayer(X_list[lr], r)
-            # default value degree of the node / sum degrees same community
-            for l in range(L):
-                if l == lr:
-                    continue
-                w[l] = initialize_w_values(X_list[l], v)
-            # for l in range(L):
-            #     w[l], v = PowMethOTRISYMNMFFixed(X_list[l], r, labels_final, w[l], maxiter=50, timelimit=200)
-
 
         else:
 
-            w, v = initialize_W_alllayers(X_list, r, init_method, init_w, power_method)
+            if L == 1 :
+                init_method = 'onelayer'
+
+            if init_seed is not None:
+                init_seed += 10 * trial
+                np.random.seed(init_seed)
+
+            if init_method == 'random':
+                base = np.arange(r)
+                rest = np.random.randint(0, r, size=n - r)
+                v = np.concatenate([base, rest])
+                np.random.shuffle(v)
+                w = np.zeros((L, n))
+                for l in range(L):
+                    w[l] = initialize_w_values(X_list[l], v)
+                # for l in range(L):
+                #     w[l], v = PowMethOTRISYMNMFFixed(X_list[l], r, labels_final, w[l], maxiter=50, timelimit=200)
+
+            elif init_method == 'onelayer':
+                w = np.zeros((L, n))
+                lr = np.random.randint(0, L)  # Choose a random layer
+                w[lr], v, _ = initialize_W_onelayer(X_list[lr], r)
+                # default value degree of the node / sum degrees same community
+                for l in range(L):
+                    if l == lr:
+                        continue
+                    w[l] = initialize_w_values(X_list[l], v)
+                # for l in range(L):
+                #     w[l], v = PowMethOTRISYMNMFFixed(X_list[l], r, labels_final, w[l], maxiter=50, timelimit=200)
+
+
+            else:
+
+                w, v = initialize_W_alllayers(X_list, r, init_method, init_w, power_method)
 
         # Normalization of W
         for l in range(L):
@@ -185,7 +199,7 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limi
                 print('Time limit passed')
                 break
 
-            w, v = update_W(X_list, S, w, v)
+            w, v = update_W(X_list,degrees_layers, S, w, v)
 
             S = update_S(X_list, r, w, v)
 
@@ -193,8 +207,9 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limi
             error = 0
             for l in range(L):
                 error += compute_error(normX[l], S[l])
+            print(error)
 
-            if error < delta or abs(prev_error - error) < delta:
+            if error < delta or abs(prev_error - error) < delta*L:
                 break
 
         if error < error_best:
@@ -210,7 +225,7 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limi
 
     return w_best, v_best, S_best, errors
 
-def update_W(X_list, S, w, v):
+def update_W(X_list, degrees_layers, S, w, v):
     L = len(X_list)
     n = X_list[0].shape[0]
     r = S.shape[1]
@@ -243,35 +258,38 @@ def update_W(X_list, S, w, v):
             erreur = 0
             # For each layer, find the best value for w[i] with v[i] = k
             for l in range(L):
-                c3 = S2[l, k, k]
-                c1 = 2 * (wp2[l, k] - (w[l, i] * S[l, v[i], k]) ** 2) - 2 * S[l, k, k] * Xii[l, i]
-                X = X_list[l]
-                start = X.indptr[i]
-                end = X.indptr[i + 1]
+                if degrees_layers[l][i]==0 :
+                    wi[l][i] = 0
+                else:
+                    c3 = S2[l, k, k]
+                    c1 = 2 * (wp2[l, k] - (w[l, i] * S[l, v[i], k]) ** 2) - 2 * S[l, k, k] * Xii[l, i]
+                    X = X_list[l]
+                    start = X.indptr[i]
+                    end = X.indptr[i + 1]
 
-                cols = X.indices[start:end]
-                vals = X.data[start:end]
+                    cols = X.indices[start:end]
+                    vals = X.data[start:end]
 
-                mask = cols != i
-                selected_cols = cols[mask]
-                selected_vals = vals[mask]
+                    mask = cols != i
+                    selected_cols = cols[mask]
+                    selected_vals = vals[mask]
 
-                c0 = -4 * np.sum(selected_vals * w[l, selected_cols] * S[l, v[selected_cols], k])
+                    c0 = -4 * np.sum(selected_vals * w[l, selected_cols] * S[l, v[selected_cols], k])
 
-                # Résolution des racines avec la méthode de Cardan
-                roots = cardan_depressed(4 * c3, 2 * c1, c0)
+                    # Résolution des racines avec la méthode de Cardan
+                    roots = cardan_depressed(4 * c3, 2 * c1, c0)
 
-                # Trouver la meilleure solution positive pour w_l(i, k_i)
-                x = np.sqrt(r / n)
-                min_value = c3 * (x ** 4) + c1 * (x ** 2) + c0 * x
-                for sol in roots:
-                    value = c3 * (sol ** 4) + c1 * (sol ** 2) + c0 * sol
-                    if sol > 0 and value < min_value:
-                        x, min_value = sol, value
+                    # Trouver la meilleure solution positive pour w_l(i, k_i)
+                    x = np.sqrt(r / n)
+                    min_value = c3 * (x ** 4) + c1 * (x ** 2) + c0 * x
+                    for sol in roots:
+                        value = c3 * (sol ** 4) + c1 * (sol ** 2) + c0 * sol
+                        if sol > 0 and value < min_value:
+                            x, min_value = sol, value
 
-                wi[l][i] = x
+                    wi[l][i] = x
 
-                erreur += min_value
+                    erreur += min_value
 
             if erreur < f_new:
                 f_new = erreur
