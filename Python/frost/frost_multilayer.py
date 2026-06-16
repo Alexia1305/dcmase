@@ -21,8 +21,8 @@ from scipy.sparse import diags
 # ---------------- frost ----------------
 # -----------------------------------------------
 
-def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limit=50, init_method='MF-SC-CA', init_w=None,
-                     power_method=False, init_partition=None, verbosity=1,
+def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-6, time_limit=300, init_method='MF-SC-CA', init_w=None,
+                     power_method=False, init_partition=None, verbosity=0,
                      init_seed=None, true_labels=None):
     """
     Heuristic algorithm for multilayer community detection via joint nonnegative matrix trifactorization.
@@ -115,6 +115,7 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limi
 
     # Precomputations
     normX = [norm(X, 'fro') for X in X_list]
+   
     degrees_layers = []
 
     for X in X_list:
@@ -190,8 +191,9 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limi
         prev_error = 0
         for l in range(L):
             prev_error += compute_error(normX[l], S[l])
+        prev_error=prev_error/sum(normX)
         error = prev_error
-        init_error = (error / L)
+        init_error = (error)
 
         errors.append(init_error)
         for iteration in range(maxiter):
@@ -207,9 +209,10 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-7, time_limi
             error = 0
             for l in range(L):
                 error += compute_error(normX[l], S[l])
-            print(error)
+            error=error/sum(normX)
+            
 
-            if error < delta or abs(prev_error - error) < delta*L:
+            if error < delta or abs(prev_error - error) < delta:
                 break
 
         if error < error_best:
@@ -280,7 +283,7 @@ def update_W(X_list, degrees_layers, S, w, v):
                     roots = cardan_depressed(4 * c3, 2 * c1, c0)
 
                     # Trouver la meilleure solution positive pour w_l(i, k_i)
-                    x = np.sqrt(r / n)
+                    x = 0
                     min_value = c3 * (x ** 4) + c1 * (x ** 2) + c0 * x
                     for sol in roots:
                         value = c3 * (sol ** 4) + c1 * (sol ** 2) + c0 * sol
@@ -520,10 +523,19 @@ def orthNNLS(M, U, Mn=None):
 # -------------- UTILS ------------------
 # ------------------------------------------------
 def compute_error(normX, S):
-    """ Computes error ||X - WSW'||_F / ||X||_F."""
-    error = np.sqrt(1e-9 + normX ** 2 - np.linalg.norm(S, 'fro') ** 2) / normX
+    """ Computes error ||X - WSW'||_F """
+    error = np.sqrt(1e-9 + normX ** 2 - np.linalg.norm(S, 'fro') ** 2) 
     return error
+def compute_error_stupid(X,w,v,S):
+    """ Computes error ||X - WSW'||_F """
+    r = S.shape[0]
+    n = X.shape[0]
+    W = np.zeros((n, r))
+    for i in range(n):
+        W[i, v[i]] = w[i]
 
+    error = np.linalg.norm(X-W@S@(W.T), 'fro')
+    return error
 
 def PowMethOTRISYMNMFFixed(X, r, v, w, maxiter, timelimit):
     t0 = time.process_time()

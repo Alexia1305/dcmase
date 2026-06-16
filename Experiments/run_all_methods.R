@@ -21,37 +21,37 @@ frost <- import("frost.frost_multilayer")
 np <- import("numpy")
 
 
-# run_simulations <- function(sim_setting, parameters, repetitions = 20) {
-#   library(parallel)
-#   cl = makeCluster(10)
-# clusterEvalQ(cl, {
-#   Sys.setenv(OMP_NUM_THREADS = "1")
-#   Sys.setenv(MKL_NUM_THREADS = "1")
-# })
-#   clusterEvalQ(cl = cl, source("Experiments/run_all_methods.R"))
-#   clusterEvalQ(cl = cl, source("Experiments/extrasimulations.R"))
-#   clusterExport(cl = cl, varlist = c("sim_setting", "parameters"),envir = environment()) 
-#   results <- parLapply(cl, 1:repetitions, function(seed) {
-#     generate_data <- sim_setting(parameters, seed)
-#     run_all_methods(generate_data$Adj_list, generate_data$truecom)
-#   })
+run_simulations <- function(sim_setting, parameters, repetitions = 20) {
+  library(parallel)
+  cl = makeCluster(10)
+clusterEvalQ(cl, {
+  Sys.setenv(OMP_NUM_THREADS = "1")
+  Sys.setenv(MKL_NUM_THREADS = "1")
+})
+  clusterEvalQ(cl = cl, source("Experiments/run_all_methods.R"))
+  clusterEvalQ(cl = cl, source("Experiments/extrasimulations.R"))
+  clusterExport(cl = cl, varlist = c("sim_setting", "parameters"),envir = environment()) 
+  results <- parLapply(cl, 1:repetitions, function(seed) {
+    generate_data <- sim_setting(parameters, seed)
+    run_all_methods(generate_data$Adj_list, generate_data$truecom)
+  })
   
-#   df_res <- data.frame(Reduce(rbind, results))
-#   rownames(df_res) <- 1:repetitions
-#   stopCluster(cl)
-#   return(df_res)
-# }
+  df_res <- data.frame(Reduce(rbind, results))
+  rownames(df_res) <- 1:repetitions
+  stopCluster(cl)
+  return(df_res)
+}
 
-# iterate_parameters <- function(sim_setting, parameters_list, param_iter, 
-#                                repetitions = 20) {
-#   df_res <- lapply(1:length(parameters_list),  function(i) {
-#     cat("Running parameter ", param_iter[[i]], "...\n", sep = "")
-#     sim_res <- run_simulations(sim_setting, parameters = parameters_list[[i]], repetitions)
-#     sim_res$parameter <- param_iter[[i]]
-#     return(sim_res)
-#   })
-#   return(Reduce(rbind, df_res))
-# }
+iterate_parameters <- function(sim_setting, parameters_list, param_iter, 
+                               repetitions = 20) {
+  df_res <- lapply(1:length(parameters_list),  function(i) {
+    cat("Running parameter ", param_iter[[i]], "...\n", sep = "")
+    sim_res <- run_simulations(sim_setting, parameters = parameters_list[[i]], repetitions)
+    sim_res$parameter <- param_iter[[i]]
+    return(sim_res)
+  })
+  return(Reduce(rbind, df_res))
+}
 
 run_simulations <- function(sim_setting, parameters, repetitions = 20) {
   
@@ -100,14 +100,14 @@ run_all_methods <- function(Adj_list, truecoms) {
       Adj_list_numpy <- lapply(Adj_list, function(X) np$array(as.matrix(X)))
       X_list <- r_to_py(Adj_list_numpy)
       truecoms_np <- np$array(truecoms)
-      browser()
+      
       
       res <- frost$frost_multilayer(X_list, K, init_method='MF-SC-CA',init_seed=seed_for_python)
       labels <- py_to_r(res[[2]])
       labels <- labels + 1
       
       # Sauvegarder X et truecoms dans un fichier .npz
-      #np$savez("data_for_python.npz", X = X_np, truecoms = truecoms_np,moments=labels)
+      
       
       
       classError(labels, truecoms)$errorRate
@@ -133,7 +133,7 @@ run_all_methods <- function(Adj_list, truecoms) {
       
     } 
     else if (method=="frost-dcmase"){
-      browser()
+     
       community_memberships <- comdet_dcmase(Adj_list, K, "kmeans")$community_memberships
       init_partition=np$array(community_memberships-1,dtype="int32")
       seed_for_python <- sample.int(.Machine$integer.max, 1)
