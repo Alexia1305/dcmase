@@ -51,8 +51,19 @@ save(results_simulationC1, file = "./Added-Simulations/Results-addC1-rep100-misc
 #######################################
 # Plot simulation results
 #######################################
+source("R/make_ggplot.R")
 load("./Added-Simulations/Results-addC1-rep100-miscerror.RData")
 png("./Added-Simulations/Figures/Simulation-C1-rep100-flipped-modified.png", width = 1200, height = 1400, res = 200)
-make_ggplot_single(results_simulationC1, "Number of graphs", xbreaks = c(1, 2, 3, 5, 7, 10,15,20,30, 40, 50),
-                       methodnames = c("FROST_MF", "FROST_US","US","MF","OLMF","DC_MASE","graph.tool","Sum.A","S.A.2.Bias.adj","MASE"))
+
+p <- make_ggplot_single(results_simulationC1, "Number of graphs", xbreaks = c(1, 2, 3, 5, 7, 10,15,20,30, 40, 50),
+                       methodnames = c("FROST_MF","FROST_DCMASE","FROST_US","US","MF","OLMF","DC_MASE","graph.tool","Sum.A","S.A.2.Bias.adj","MASE"))
+ggsave(
+  filename = "figure_paper.png",
+  plot = p,              # ton objet ggplot
+  width = 10.5,
+  height = 6,
+  units = "in",
+  dpi = 600,
+  bg = "white"
+)
 dev.off()

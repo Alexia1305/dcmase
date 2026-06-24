@@ -16,7 +16,7 @@ library(dplyr)
 
 # num_replications <- 100
 # num_layers <- list( 5, 10, 15, 20, 25,30,35, 40, 45, 50)
-num_replications <- 1
+num_replications <- 100
 num_layers <- list(1,2,3,5,7,10,15,20,30,40,50)
 
 parameters_list <- num_layers
@@ -52,6 +52,7 @@ write.table(
   quote = FALSE
 )
 
+browser()
 
 # Different B same theta
 results_simulation2 <- iterate_parameters(sim_setting = simulation2, parameters_list, param_iter, num_replications)
@@ -214,8 +215,8 @@ source("R/make_ggplot.R")
 #######################################
 # Plot simulation results
 #######################################
-#load("Experiments/Results-allmethods-rep100-miscerror.RData")
-#png("Simulation-rep100-6scenarios-flipped.png", width = 1200, height = 1500, res = 200)
+#load("Results-testcomplete.RData")
+png("Simulation-rep100-6scenarios-flipped.png", width = 1200, height = 1500, res = 200)
 different_scenarios[] <- lapply(different_scenarios, function(col) {
   if (is.list(col)) {
     as.numeric(unlist(col))
@@ -224,8 +225,16 @@ different_scenarios[] <- lapply(different_scenarios, function(col) {
   }
 })
 
-make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),
-                       methodnames = c("FROST_MF","FROST_US","FROST_DCMASE","US","OLMF","DC_MASE","graph-tool","Sum of adj. matrices", "Bias-adjusted SoS",  "MASE"))#, "graph-tool"))
+p <- make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),methodnames = c("FROST_MF", "FROST_US","FROST_DCMASE", "US", "MF", "OLMF","DC_MASE","graph.tool","Sum.A","S.A.2.Bias.adj","MASE"))#, "graph-tool"))
+ggsave(
+  filename = "figure_paper.png",
+  plot = p,              # ton objet ggplot
+  width = 10.5,
+  height = 6,
+  units = "in",
+  dpi = 600,
+  bg = "white"
+)
 #make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),
                         #methodnames = c("DC-MASE", "Sum of adj. matrices", "Bias-adjusted SoS",  "MASE", "OLMF"))#, "graph-tool"))
 

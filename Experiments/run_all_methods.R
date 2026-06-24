@@ -53,29 +53,29 @@ iterate_parameters <- function(sim_setting, parameters_list, param_iter,
   return(Reduce(rbind, df_res))
 }
 
-run_simulations <- function(sim_setting, parameters, repetitions = 20) {
+# run_simulations <- function(sim_setting, parameters, repetitions = 20) {
   
-  results <- lapply(1:repetitions, function(seed) {
-    cat("Seed:", seed, "\n")
-    generate_data <- sim_setting(parameters, seed)
-    run_all_methods(generate_data$Adj_list, generate_data$truecom)
-  })
+#   results <- lapply(1:repetitions, function(seed) {
+#     cat("Seed:", seed, "\n")
+#     generate_data <- sim_setting(parameters, seed)
+#     run_all_methods(generate_data$Adj_list, generate_data$truecom)
+#   })
   
-  df_res <- data.frame(Reduce(rbind, results))
-  rownames(df_res) <- 1:repetitions
-  return(df_res)
-}
+#   df_res <- data.frame(Reduce(rbind, results))
+#   rownames(df_res) <- 1:repetitions
+#   return(df_res)
+# }
 
-iterate_parameters <- function(sim_setting, parameters_list, param_iter, 
-                               repetitions = 20) {
-  df_res <- lapply(1:length(parameters_list),  function(i) {
-    cat("Running parameter ", param_iter[[i]], "...\n", sep = "")
-    sim_res <- run_simulations(sim_setting, parameters = parameters_list[[i]], repetitions)
-    sim_res$parameter <- param_iter[[i]]
-    return(sim_res)
-  })
-  return(Reduce(rbind, df_res))
-}
+# iterate_parameters <- function(sim_setting, parameters_list, param_iter, 
+#                                repetitions = 20) {
+#   df_res <- lapply(1:length(parameters_list),  function(i) {
+#     cat("Running parameter ", param_iter[[i]], "...\n", sep = "")
+#     sim_res <- run_simulations(sim_setting, parameters = parameters_list[[i]], repetitions)
+#     sim_res$parameter <- param_iter[[i]]
+#     return(sim_res)
+#   })
+#   return(Reduce(rbind, df_res))
+# }
 
 
 
@@ -222,14 +222,17 @@ simulation1 <- function(parameters, seed = 1989) {
   set.seed(seed)
   m <- parameters[1]
   ave_deg <- 10
-  
+  alpha <- 2.5
   # Generate network parameters ------------------------------------------------
   n <- 150
   K <- 3
   Z <- kronecker(diag(K), rep(1, n/K))
   #theta <- runif(n, min = 0.05, max = 1)
-  theta <- rexp(n) + 0.2
-  theta <- as.vector(theta / (Z%*%crossprod(Z,theta)/(n/K)))
+  alpha <- 2.5
+  theta <- (runif(n))^(-1/(alpha - 1))
+
+  # theta <- rexp(n) + 0.2
+  # theta <- as.vector(theta / (Z%*%crossprod(Z,theta)/(n/K)))
   
   B <- 0.06*diag(K) + 0.04
   
@@ -630,17 +633,29 @@ simulation_identifiability_m <- function(parameters, seed = 1989) {
   
   # --- Define complementary rank-deficient B matrices (A & B) -----------------
   # collapse 1 & 2
-  B_A <- matrix(c(
-    1, 1, 0.3,
-    1, 1, 0.3,
-    0.3, 0.3, 0.9
+  # B_A <- matrix(c(
+  #   1, 1, 0.3,
+  #   1, 1, 0.3,
+  #   0.3, 0.3, 0.9
+  # ), nrow = 3, byrow = TRUE)
+  
+  # # collapse 2 & 3
+  # B_B <- matrix(c(
+  #   1, 0.4, 0.4,
+  #   0.4, 1, 1,
+  #   0.4 , 1, 1
+  # ), nrow = 3, byrow = TRUE)
+   B_A <- matrix(c(
+    0.10, 0.10, 0.04,
+    0.10, 0.10, 0.04,
+    0.04, 0.04, 0.06
   ), nrow = 3, byrow = TRUE)
   
   # collapse 2 & 3
   B_B <- matrix(c(
-    1, 0.4, 0.4,
-    0.4, 1, 1,
-    0.4 , 1, 1
+    0.11, 0.04, 0.04,
+    0.04, 0.09, 0.09,
+    0.04, 0.09, 0.09
   ), nrow = 3, byrow = TRUE)
   
   # --- Layer-wise theta --------------------------------------------------------
