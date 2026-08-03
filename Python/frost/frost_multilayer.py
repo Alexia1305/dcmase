@@ -225,6 +225,9 @@ def frost_multilayer(X_list, r, numTrials=3, maxiter=1000, delta=1e-6, time_limi
             if true_labels is not None:
                 print('NMI : ', normalized_mutual_info_score(true_labels, v_best))
             print('Time', time.time() - start_time)
+        if time.time() - start_time > time_limit:
+                print('Time limit passed')
+                break
 
     return w_best, v_best, S_best, errors
 
@@ -246,7 +249,7 @@ def update_W(X_list, degrees_layers, S, w, v):
             wp2[l, k] = np.sum(w2[l]*S2[l, v, k])
 
     # Update of each row (node)
-    for i in range(n):
+    for i in np.random.permutation(n):
         vi_new = -1
         wi_new = np.full(L, -1)
         wi = np.zeros((L, n))
@@ -441,7 +444,13 @@ def initialize_w_values(Xl, v):
     degrees = np.array(Xl.sum(axis=1)).ravel()
     # compute the sum of node degrees for each community
     d_r = np.bincount(v, weights=degrees)
-    w = degrees / d_r[v]
+
+    w = np.divide(
+        degrees,
+        d_r[v],
+        out=np.zeros_like(degrees, dtype=float),
+        where=d_r[v] != 0
+    )
     return w
 
 def extract_w_v(W):

@@ -75,7 +75,7 @@ dcspectral<-function(x,n,k)
   rownorm<-apply(specmat,1,function(a){(sum(a^2))^0.5})
   rownorm<-ifelse(rownorm < 10^(-06),10^(-06),rownorm)
   specnorm<-specmat/rownorm
-  speck<-kmeans(specnorm,k)
+  speck<-kmeans(specnorm,k, nstart = 5)
   return(speck$cluster)
 }
 
