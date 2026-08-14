@@ -6,6 +6,48 @@ library(igraph)
 library(mclust)
 
 ####################### Load DATA ##########################################################
+build_Flickr <-function(path = "."){
+
+  
+  # Lire les labels
+  labels_file <- file.path(path, "labels.txt")
+  labels <- scan(labels_file, what = "", quiet = TRUE)
+  labels <- as.numeric(labels) + 1
+  
+  # Nombre de noeuds
+  n <- length(labels)
+  
+  
+  # Fonction pour construire une matrice d'adjacence
+  read_layer <- function(file) {
+    
+    edges <- read.table(file, header = FALSE)
+
+    edges$V1 <- edges$V1 + 1
+    edges$V2 <- edges$V2 + 1    
+    
+    A <-  Matrix(0, n, n, sparse = TRUE)
+    
+    # Graphe non orienté
+    A[cbind(edges$V1, edges$V2)] <- 1
+    A[cbind(edges$V2, edges$V1)] <- 1
+    
+    return(A)
+  }
+  
+  
+  # Lire les couches
+  layers <- list(
+    read_layer(file.path(path, "layer0.txt")),
+    read_layer(file.path(path, "layer1.txt"))
+  )
+  
+  
+  return(list(
+    A = layers,
+    labels = labels
+  ))
+}
 
 build_AUCS <- function(edge_file, node_file){
 
@@ -365,6 +407,176 @@ build_CBCL<- function(edges_path, labels_path) {
   ))
 }
 
+build_lazega <- function(path,
+                        metadata = c("status", "gender", "office",
+                                     "practice", "lawschool")) {
+
+  metadata <- match.arg(metadata)
+
+  ## ---------- Read files ----------
+  edges  <- read.table(file.path(path, "Lazega-Law-Firm_multiplex.edges"),
+                       header = FALSE)
+
+  layers <- read.table(file.path(path, "Lazega-Law-Firm_layers.txt"),
+                 header = TRUE)
+
+  nodes  <- read.table(file.path(path, "Lazega-Law-Firm_nodes.txt"),
+                       header = TRUE)
+  
+
+  colnames(nodes) <- c(
+    "id",
+    "status",
+    "gender",
+    "office",
+    "years",
+    "age",
+    "practice",
+    "lawschool"
+  )
+
+  n <- nrow(nodes)
+
+  ## ---------- Build adjacency matrices ----------
+  adjacency_list <- vector("list", 3)
+  
+
+  for(i in list(1,2,3)){
+
+    layer_edges <- edges[edges$V1 == i, ]
+
+    A <- matrix(0, n, n)
+
+    A[cbind(layer_edges$V2, layer_edges$V3)] <- 1
+    A[cbind(layer_edges$V3, layer_edges$V2)] <- 1
+
+    adjacency_list[[i]] <- A
+  }
+
+  ## ---------- Labels ----------
+  labels <- nodes[[metadata]]
+
+  ## ---------- Return ----------
+  list(
+    A = adjacency_list,
+    labels = labels,
+    node_metadata = nodes
+  )
+}
+build_elegans <- function(path,
+                        metadata = c("status", "gender", "office",
+                                     "practice", "lawschool")) {
+
+  metadata <- match.arg(metadata)
+
+  ## ---------- Read files ----------
+  edges  <- read.table(file.path(path, "Lazega-Law-Firm_multiplex.edges"),
+                       header = FALSE)
+
+  layers <- read.table(file.path(path, "Lazega-Law-Firm_layers.txt"),
+                 header = TRUE)
+
+  nodes  <- read.table(file.path(path, "Lazega-Law-Firm_nodes.txt"),
+                       header = TRUE)
+  
+
+  colnames(nodes) <- c(
+    "id",
+    "status",
+    "gender",
+    "office",
+    "years",
+    "age",
+    "practice",
+    "lawschool"
+  )
+
+  n <- nrow(nodes)
+
+  ## ---------- Build adjacency matrices ----------
+  adjacency_list <- vector("list", 3)
+  
+
+  for(i in list(1,2,3)){
+
+    layer_edges <- edges[edges$V1 == i, ]
+
+    A <- matrix(0, n, n)
+
+    A[cbind(layer_edges$V2, layer_edges$V3)] <- 1
+    A[cbind(layer_edges$V3, layer_edges$V2)] <- 1
+
+    adjacency_list[[i]] <- A
+  }
+
+  ## ---------- Labels ----------
+  labels <- nodes[[metadata]]
+
+  ## ---------- Return ----------
+  list(
+    A = adjacency_list,
+    labels = labels,
+    node_metadata = nodes
+  )
+}
+
+build_caltech <- function(labels_file, edges_file) {
+  
+  ## ---- Read labels ----
+  labels_data <- read.table(
+    labels_file,
+    header = FALSE
+  )
+  
+  # colonne 1 = node id, colonne 2 = label
+  labels <- labels_data$V2
+  
+  n <- length(labels)
+  
+  
+  ## ---- Read edges ----
+  edges <- read.table(
+    edges_file,
+    header = FALSE
+  )
+  
+  # colonnes :
+  # V1 = layer
+  # V2 = node i
+  # V3 = node j
+  
+  num_layers <- max(edges$V1)
+  
+  A_list <- vector("list", num_layers)
+  
+  
+  ## ---- Build adjacency matrices ----
+  for (l in 1:num_layers) {
+    
+    edges_l <- edges[edges$V1 == l, ]
+    
+    A <- sparseMatrix(
+      i = c(edges_l$V2, edges_l$V3),
+      j = c(edges_l$V3, edges_l$V2),
+      x = 1,
+      dims = c(n, n)
+    )
+    
+    # sécurité : supprimer les doublons
+    A[A > 1] <- 1
+    
+    A_list[[l]] <- A
+  }
+  
+  
+  return(
+    list(
+      labels = labels,
+      A = A_list
+    )
+  )
+}
+
 ##################### Methods #############################################################
 run_all_methods <- function(Adj_list, truecoms) {
   set.seed(42)
@@ -374,8 +586,8 @@ run_all_methods <- function(Adj_list, truecoms) {
   # methods_to_run <- c("graph-tool","frost-mf","frost-us","frost-dcmase",
   #                     "us","mf","lmfo","dcmase","ave_spherical",
   #                     "sq-bias-adjusted","mase-spherical")
-   methods_to_run <- c("graph-tool","frost-us","dcmase","ave_spherical",
-                       "sq-bias-adjusted","mase-spherical","lmfo")
+   methods_to_run <- c("graph-tool","frost-us","lmfo","dcmase","ave_spherical",
+                       "sq-bias-adjusted","mase-spherical")
   results <- lapply(methods_to_run, function(method) {
     print(method)
     
@@ -407,130 +619,228 @@ multilayer_properties <- function(adj_list) {
   cat("Number of nodes:", N, "\n")
   cat("Number of layers:", L, "\n\n")
   
-  results <- data.frame(
+  # ============================================================
+  # 1. Statistics for each layer
+  # ============================================================
+  
+  layer_statistics <- data.frame(
     layer = 1:L,
-    edges = NA,
-    density = NA,
-    avg_degree = NA,
-    degree_sd = NA,
-    max_degree = NA,
-    isolated_nodes = NA,
-    clustering = NA,
-    components = NA
+    edges = NA_real_,
+    density = NA_real_,
+    avg_degree = NA_real_,
+    degree_sd = NA_real_,
+    degree_cv = NA_real_,
+    max_degree = NA_real_,
+    isolated_nodes = NA_real_,
+    clustering = NA_real_,
+    components = NA_real_
   )
   
-  degrees <- list()
+  degrees <- vector("list", L)
   
   for (l in 1:L) {
     
     A <- adj_list[[l]]
     
-    # Remove diagonal
+    # Remove self-loops
     diag(A) <- 0
     
-    g <- graph_from_adjacency_matrix(
+    g <- igraph::graph_from_adjacency_matrix(
       A,
-      mode = "undirected"
+      mode = "undirected",
+      diag = FALSE
     )
     
-    deg <- degree(g)
+    deg <- igraph::degree(g)
     degrees[[l]] <- deg
     
-    results$edges[l] <- ecount(g)
+    # Number of edges
+    layer_statistics$edges[l] <- igraph::ecount(g)
     
     # Density
-    results$density[l] <- edge_density(g)
+    layer_statistics$density[l] <- igraph::edge_density(g)
     
-    # Average degree
-    results$avg_degree[l] <- mean(deg)
+    # Degree statistics
+    layer_statistics$avg_degree[l] <- mean(deg)
+    layer_statistics$degree_sd[l] <- sd(deg)
     
-    # Degree heterogeneity
-    results$degree_sd[l] <- sd(deg)
+    # Coefficient of variation
+    if (mean(deg) > 0) {
+      layer_statistics$degree_cv[l] <- sd(deg) / mean(deg)
+    } else {
+      layer_statistics$degree_cv[l] <- NA
+    }
     
-    results$max_degree[l] <- max(deg)
+    layer_statistics$max_degree[l] <- max(deg)
     
-    # Isolated nodes
-    results$isolated_nodes[l] <- sum(deg == 0)/N
+    # Proportion of isolated nodes
+    layer_statistics$isolated_nodes[l] <- mean(deg == 0)
     
-    # Clustering coefficient
-    results$clustering[l] <- transitivity(
+    # Global clustering coefficient
+    layer_statistics$clustering[l] <- igraph::transitivity(
       g,
       type = "global"
     )
     
-    # Connected components
-    results$components[l] <- components(g)$no
+    # Number of connected components
+    layer_statistics$components[l] <- igraph::components(g)$no
   }
   
-  
-  cat("---- Layer statistics ----\n")
-  print(results)
-  
-  
-  cat("\n---- Average properties across layers ----\n")
+  # ============================================================
+  # 2. Summary across layers
+  # ============================================================
   
   summary <- data.frame(
     measure = c(
+      "Number of edges",
       "Density",
       "Average degree",
-      "Degree std",
-      "Max degree",
-      "Isolated nodes",
-      "Clustering",
+      "Degree SD",
+      "Degree CV",
+      "Maximum degree",
+      "Isolated nodes (%)",
+      "Clustering coefficient",
       "Number of components"
     ),
+    
     mean = c(
-      mean(results$density),
-      mean(results$avg_degree),
-      mean(results$degree_sd),
-      mean(results$max_degree),
-      mean(results$isolated_nodes),
-      mean(results$clustering),
-      mean(results$components)
+      mean(layer_statistics$edges),
+      mean(layer_statistics$density),
+      mean(layer_statistics$avg_degree),
+      mean(layer_statistics$degree_sd),
+      mean(layer_statistics$degree_cv, na.rm = TRUE),
+      mean(layer_statistics$max_degree),
+      100 * mean(layer_statistics$isolated_nodes),
+      mean(layer_statistics$clustering, na.rm = TRUE),
+      mean(layer_statistics$components)
     ),
+    
     sd = c(
-      sd(results$density),
-      sd(results$avg_degree),
-      sd(results$degree_sd),
-      sd(results$max_degree),
-      sd(results$isolated_nodes),
-      sd(results$clustering),
-      sd(results$components)
+      sd(layer_statistics$edges),
+      sd(layer_statistics$density),
+      sd(layer_statistics$avg_degree),
+      sd(layer_statistics$degree_sd),
+      sd(layer_statistics$degree_cv, na.rm = TRUE),
+      sd(layer_statistics$max_degree),
+      100 * sd(layer_statistics$isolated_nodes),
+      sd(layer_statistics$clustering, na.rm = TRUE),
+      sd(layer_statistics$components)
     )
   )
   
-  print(summary)
+  # ============================================================
+  # 3. Compact summary for paper
+  # ============================================================
   
+  paper_summary <- data.frame(
+    property = c(
+      "Nodes",
+      "Layers",
+      "Edges",
+      "Density",
+      "Average degree",
+      "Degree CV",
+      "Max degree",
+      "Isolated nodes (%)",
+      "Clustering",
+      "Components"
+    ),
+    
+    value = c(
+      N,
+      L,
+      sprintf("%.1f",
+              sum(layer_statistics$edges)),
+      sprintf("%.4f ± %.4f",
+              mean(layer_statistics$density),
+              sd(layer_statistics$density)),
+      sprintf("%.2f ± %.2f",
+              mean(layer_statistics$avg_degree),
+              sd(layer_statistics$avg_degree)),
+      sprintf("%.2f ± %.2f",
+              mean(layer_statistics$degree_cv, na.rm = TRUE),
+              sd(layer_statistics$degree_cv, na.rm = TRUE)),
+      sprintf("%.1f ± %.1f",
+              mean(layer_statistics$max_degree),
+              sd(layer_statistics$max_degree)),
+      sprintf("%.2f ± %.2f",
+              100 * mean(layer_statistics$isolated_nodes),
+              100 * sd(layer_statistics$isolated_nodes)),
+      sprintf("%.3f ± %.3f",
+              mean(layer_statistics$clustering, na.rm = TRUE),
+              sd(layer_statistics$clustering, na.rm = TRUE)),
+      sprintf("%.1f ± %.1f",
+              mean(layer_statistics$components),
+              sd(layer_statistics$components))
+    )
+  )
   
-  # Similarity between layers
+  # ============================================================
+  # 4. Similarity between layers
+  # ============================================================
+  
   cat("\n---- Layer similarity ----\n")
   
-  if(L > 1){
-    sim <- matrix(0,L,L)
+  similarity <- NULL
+  average_similarity <- NA
+  
+  if (L > 1) {
     
-    for(i in 1:L){
-      for(j in 1:L){
+    similarity <- matrix(
+      0,
+      nrow = L,
+      ncol = L
+    )
+    
+    for (i in 1:L) {
+      for (j in 1:L) {
         
         Ai <- adj_list[[i]]
         Aj <- adj_list[[j]]
         
-        sim[i,j] <- sum(Ai == Aj)/(N*N)
+        # Binary similarity between adjacency matrices
+        similarity[i, j] <- mean(Ai == Aj)
       }
     }
     
-    print(round(sim,3))
+    average_similarity <- mean(
+      similarity[upper.tri(similarity)]
+    )
     
-    cat("\nAverage layer similarity:",
-        mean(sim[upper.tri(sim)]),
-        "\n")
+    print(round(similarity, 3))
+    
+    cat(
+      "\nAverage layer similarity:",
+      round(average_similarity, 3),
+      "\n"
+    )
   }
   
+  # ============================================================
+  # 5. Print results
+  # ============================================================
+  
+  cat("\n---- Layer statistics ----\n")
+  print(layer_statistics)
+  
+  cat("\n---- Summary across layers ----\n")
+  print(summary)
+  
+  cat("\n---- Compact summary for paper ----\n")
+  print(paper_summary)
+  
+  # ============================================================
+  # 6. Return
+  # ============================================================
   
   return(
     list(
-      layer_statistics = results,
+      layer_statistics = layer_statistics,
       summary = summary,
-      degrees = degrees
+      paper_summary = paper_summary,
+      degrees = degrees,
+      layer_similarity = similarity,
+      average_layer_similarity = average_similarity
     )
   )
 }
@@ -538,11 +848,15 @@ multilayer_properties <- function(adj_list) {
 
 
 ######################################## RESULTS ############################
-
+#data <- build_Flickr("Data/Flickr")
+#data <- build_lazega("Data/Lazega/Dataset",metadata="practice")
 #data <- build_cora_multilayer("Data/cora/cora.content", "Data/cora/cora.cites")
 #data <- build_UCI("Data/UCI",k=20)
-data <- build_citeseer_multilayer("Data/citeseer/citeseer.content", "Data/citeseer/citeseer.cites")
+#data <- build_citeseer_multilayer("Data/citeseer/citeseer.content", "Data/citeseer/citeseer.cites")
 #data <- build_AUCS("Data/AUCS/aucs_edgelist.txt","Data/AUCS/aucs_nodelist.txt")
-#data <- build_CBCL("Data/CBCL/multiplex_edges.txt","Data/CBCL/labels.txt")
+data <- build_CBCL("Data/CBCL/multiplex_edges.txt","Data/CBCL/labels.txt")
+
+#data <- build_caltech("Data/caltech_all/labels.txt","Data/caltech_all/edges.txt")
+#data <- build_caltech("Data/caltech_20/labels.txt","Data/caltech_20/edges.txt")
 properties <- multilayer_properties(data$A)
-results<-run_all_methods(data$A[[1]], data$labels)
+results<-run_all_methods(data$A,data$labels)

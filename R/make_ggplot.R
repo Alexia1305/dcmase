@@ -183,7 +183,7 @@ make_ggplot_multipleBT2 <- function(different_scenarios,
     scale_color_manual(labels = methodnames_valid, values = colors) +
     scale_shape_manual(labels = methodnames_valid, values = shapes) +
     scale_linetype_manual(labels = methodnames_valid, values = linetypes) +
-    theme(legend.position = "top", legend.text.align = 0)
+    theme(legend.position = "top", legend.text.align = 0,, panel.spacing = unit(0.3, "cm"))
   
   return(p)
 }

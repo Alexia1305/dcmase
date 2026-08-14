@@ -14,13 +14,13 @@ library(dplyr)
 # Simulation settings
 #######################################
 
-list_num_nodes <- c(200,300,500,700,1000)
-list_K <- c(2,3,5,7,10)
+list_num_nodes <- c(1000,1000,1000,1000)
+list_K <- c(2,4,8,10)
 degree_distribution <- "exp" # "exp" for exponnential or "pow" for power distribution 
 num_replications <- 100
 num_layers <- c(10)
 
-param_iter = list_num_nodes
+param_iter = list_K
 parameters_list <-   lapply(seq_along(list_num_nodes), function(i) {
     list(
       m = num_layers,
@@ -116,6 +116,28 @@ write.table(
   row.names = FALSE,
   quote = FALSE
 )
+source("R/make_ggplot.R")
+library(tidyr)
+metric <- "Error"
+
+results_simulation3_metric <- results_simulation3 %>%
+  pivot_wider(
+    id_cols = c(Seed, parameter),
+    names_from = Method,
+    values_from = all_of(metric)
+  )
+p <- make_ggplot_single(results_simulation3_metric, "Number of graphs", xbreaks = c(2,5,10,20),
+                       methodnames =c("FROST","OLMF","DC_MASE","graph-tool","Sum A","Bias-adjusted SoS","MASE"))
+ggsave(
+  filename = "figure_paper.png",
+  plot = p,              # ton objet ggplot
+  width = 10.5,
+  height = 6,
+  units = "in",
+  dpi = 600,
+  bg = "white"
+)
+dev.off()
 # # Same B different theta
 # results_simulation4 <- iterate_parameters(simulation4, parameters_list, param_iter, num_replications)
 # save(results_simulation4,file="sim4.RData")
@@ -251,6 +273,8 @@ ggsave(
   dpi = 600,
   bg = "white"
 )
+
+
 #make_ggplot_multipleBT2(different_scenarios, "Number of graphs", xbreaks = c(1, seq(10, 50, 10)),
                         #methodnames = c("DC-MASE", "Sum of adj. matrices", "Bias-adjusted SoS",  "MASE", "OLMF"))#, "graph-tool"))
 

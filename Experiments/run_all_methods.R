@@ -116,14 +116,23 @@ run_all_methods <- function(Adj_list, truecoms) {
 })
 
 results <- do.call(rbind, results)
+#rownames(results) <- c(
+#   "graph-tool",
+#   "FROST_MF",
+#   "FROST_US",
+#   "FROST_DCMASE",
+#   "US",
+#   "MF",
+#   "OLMF",
+#   "DC_MASE",
+#   "Sum A",
+#   "S-A^2-Bias-adj",
+#   "MASE"
+# )
 
 rownames(results) <- c(
   "graph-tool",
-  "FROST_MF",
-  "FROST_US",
-  "FROST_DCMASE",
-  "US",
-  "MF",
+  "FROST",
   "OLMF",
   "DC_MASE",
   "Sum A",
