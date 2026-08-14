@@ -4,8 +4,7 @@
 .Ruserdata
 .idea/
 temp/
-Data/
+Data/other dataset
 results/
--lah Data
 /Python/frost/__pycache__
 *.pyc
