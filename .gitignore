@@ -5,3 +5,7 @@
 .idea/
 temp/
 Data/
+results/
+-lah Data
+/Python/frost/__pycache__
+*.pyc
